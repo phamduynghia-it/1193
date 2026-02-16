@@ -1,0 +1,465 @@
+<!doctype html>
+<html>
+    <meta charset="utf-8" />
+
+    <head>
+        <title>HAPPY NEW YEAR</title>
+    </head>
+
+    <body>
+        <audio id="bgMusic" src="music.mp3" preload="auto" loop></audio>
+
+        <!-- FIREWORK BACKGROUND -->
+        <canvas id="canvas"></canvas>
+
+        <!-- TEXT PARTICLES -->
+        <canvas id="countdownCanvas"></canvas>
+
+        <!-- HEART EFFECT -->
+        <canvas id="pinkboard"></canvas>
+
+        <div
+            id="tapHint"
+            style="
+                position: fixed;
+                top: 60%;
+                left: 50%;
+                transform: translateX(-50%);
+                color: #aaa;
+                font-size: 18px;
+                z-index: 20;
+            "
+        >
+            Nhấn vào màn hình để bắt đầu
+        </div>
+
+        <div id="child" style="display: none"></div>
+
+        <style>
+            body {
+                margin: 0;
+                overflow: hidden;
+                background: black;
+            }
+
+            canvas {
+                position: absolute;
+                width: 100%;
+                height: 100%;
+            }
+
+            #canvas {
+                z-index: 1;
+            }
+
+            #countdownCanvas {
+                z-index: 10;
+            }
+
+            #pinkboard {
+                z-index: 5;
+            }
+
+            #child {
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                z-index: 15;
+            }
+
+            h4 {
+                font-family: Mali, Arial;
+                font-size: 40px;
+                color: #fff;
+                margin: 0;
+            }
+        </style>
+
+        <!-- ================= FIREWORK BACKGROUND ================= -->
+        <script>
+            const canvas = document.getElementById("canvas");
+            const ctx = canvas.getContext("2d");
+            canvas.width = innerWidth;
+            canvas.height = innerHeight;
+            const FIRE_COLORS = [
+                "#ff4d4d", // đỏ
+                "#ff6b6b",
+                "#ff69b4", // hồng
+                "#ff85c1",
+                "#ffd700", // vàng
+                "#ffe066",
+                "#7bed9f", // xanh lá
+                "#2ed573",
+                "#00e5ff", // xanh dương
+                "#1e90ff",
+                "#70a1ff",
+                "#b388ff", // tím
+                "#a29bfe",
+                "#d980fa",
+                "#f368e0",
+            ];
+
+            const isMobile = innerWidth < 768;
+            const fireworks = [];
+            const particles = [];
+            const MAX_PARTICLES = isMobile ? 120 : 280;
+            const stars = [];
+            const STAR_COUNT = isMobile ? 60 : 120;
+
+            for (let i = 0; i < STAR_COUNT; i++) {
+                stars.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    r: Math.random() * 1.2 + 0.3,
+                    a: Math.random(),
+                    da: Math.random() * 0.02 + 0.005,
+                });
+            }
+
+            function drawStars() {
+                stars.forEach((s) => {
+                    s.a += s.da;
+                    if (s.a >= 1 || s.a <= 0) s.da *= -1;
+
+                    ctx.beginPath();
+                    ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+                    ctx.fillStyle = `rgba(255,255,255,${s.a})`;
+                    ctx.fill();
+                });
+            }
+            class Firework {
+                constructor(type) {
+                    this.type = type;
+                    this.color =
+                        FIRE_COLORS[
+                            Math.floor(Math.random() * FIRE_COLORS.length)
+                        ];
+                    this.x = Math.random() * canvas.width;
+                    this.y = canvas.height;
+                    this.ty = Math.random() * canvas.height * 0.5;
+                    this.vy = -(isMobile ? 6 : 8);
+                }
+
+                update() {
+                    this.y += this.vy;
+                    if (this.y <= this.ty) {
+                        explode(this.x, this.y, this.type, this.color);
+
+                        return false;
+                    }
+                    return true;
+                }
+                draw() {
+                    ctx.fillStyle = "#fff";
+                    ctx.fillRect(this.x, this.y, 2, 2);
+                }
+            }
+
+            function explode(x, y, type, color) {
+                let count = isMobile ? 20 : 30;
+                let angleStep = (Math.PI * 2) / count;
+
+                for (let i = 0; i < count; i++) {
+                    let angle = angleStep * i;
+                    let speed = Math.random() * 3 + 2;
+
+                    let vx = Math.cos(angle) * speed;
+                    let vy = Math.sin(angle) * speed;
+
+                    if (type === "rain") vy = Math.random() * 3 + 2;
+                    if (type === "star") speed *= 1.4;
+
+                    particles.push({
+                        x,
+                        y,
+                        vx,
+                        vy,
+                        life: isMobile ? 40 : 60,
+                        color,
+                    });
+                }
+            }
+
+            function launchSalvo() {
+                let shots = Math.floor(Math.random() * 3) + 2; // 2–4 quả
+                const types = ["classic", "star", "rain"];
+
+                for (let i = 0; i < shots; i++) {
+                    fireworks.push(
+                        new Firework(
+                            types[Math.floor(Math.random() * types.length)],
+                        ),
+                    );
+                }
+            }
+
+            function animate() {
+                ctx.fillStyle = "rgba(0,0,0,0.2)";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                drawStars();
+                if (Math.random() < 0.04) launchSalvo();
+
+                fireworks.forEach((f, i) => {
+                    if (!f.update()) fireworks.splice(i, 1);
+                    else f.draw();
+                });
+
+                particles.forEach((p, i) => {
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    p.life--;
+
+                    ctx.fillStyle = p.color;
+                    ctx.fillRect(p.x, p.y, 2, 2);
+
+                    if (p.life <= 0 || particles.length > MAX_PARTICLES)
+                        particles.splice(i, 1);
+                });
+
+                requestAnimationFrame(animate);
+            }
+            animate();
+        </script>
+
+        <script>
+            /* ================= COUNTDOWN PARTICLES ================= */
+            var countdownParticles = [];
+            var countdownTexts = [
+                "❤",
+                "Happy new year,\n Andy",
+                "Năm mới mong\n anh luôn cười\n thật tươi",
+                "Mỗi ngày trôi\n qua đều nhẹ nhàng\n với anh",
+                "Buồn vui gì\n cũng có em\n bên cạnh",
+                "Thương anh\n rất nhều ❤",
+
+                "em yêu Andy\n rất nhìu",
+                "Hoàng Nga",
+            ];
+
+            var currentTextIndex = 0;
+            var countdownStage = "idle"; // idle | forming | holding | dispersing
+            var stableTime = 0; // biến đếm thời gian
+
+            // --- CẤU HÌNH THỜI GIAN Ở ĐÂY ---
+            var STABLE_DURATION = 150; // Tăng lên 500 để chữ giữ nét lâu hơn (tầm 8-9 giây)
+            var FORMING_SPEED = 0.1; // Tăng tốc độ bay từ 0.1 lên 0.35 để giảm thời gian bị vỡ
+            // -------------------------------
+
+            var countdownHoldTime = 0;
+            var countdownCtx = document
+                .getElementById("countdownCanvas")
+                .getContext("2d");
+
+            var started = false;
+            var pinkboardStarted = false;
+            var particleSize = 3;
+            var particleDensity = 6; // Giảm nhẹ mật độ để đỡ lag nếu máy yếu
+
+            function initCountdownCanvas() {
+                var canvas = document.getElementById("countdownCanvas");
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+            }
+
+            function createTextParticles(text) {
+                countdownParticles = [];
+                text = text.replace(/\s+\n/g, "\n");
+                var lines = text.split("\n").map((s) => s.trim());
+
+                var tempCanvas = document.createElement("canvas");
+                var tempCtx = tempCanvas.getContext("2d");
+
+                var maxAllowedWidth = window.innerWidth * 0.8;
+                var fontSize = Math.min(window.innerWidth / 8, 220);
+                tempCtx.font = `bold ${fontSize}px Arial`;
+
+                function measure() {
+                    return Math.max(
+                        ...lines.map((l) => tempCtx.measureText(l).width),
+                    );
+                }
+                while (measure() > maxAllowedWidth && fontSize > 18) {
+                    fontSize *= 0.9;
+                    tempCtx.font = `bold ${fontSize}px Arial`;
+                }
+
+                var lineHeight = fontSize * 1.2;
+                tempCanvas.width = window.innerWidth;
+                tempCanvas.height = lineHeight * lines.length + fontSize;
+
+                tempCtx.font = `bold ${fontSize}px Arial`;
+                tempCtx.fillStyle = "#ff69b4";
+
+                tempCtx.textAlign = "center";
+                tempCtx.textBaseline = "middle";
+                tempCtx.shadowColor = "#800080";
+                tempCtx.shadowBlur = 8;
+
+                var startY =
+                    tempCanvas.height / 2 -
+                    ((lines.length - 1) * lineHeight) / 2;
+                lines.forEach((l, i) => {
+                    tempCtx.fillText(
+                        l,
+                        tempCanvas.width / 2,
+                        startY + i * lineHeight,
+                    );
+                });
+
+                var data = tempCtx.getImageData(
+                    0,
+                    0,
+                    tempCanvas.width,
+                    tempCanvas.height,
+                ).data;
+                for (var y = 0; y < tempCanvas.height; y += particleDensity) {
+                    for (
+                        var x = 0;
+                        x < tempCanvas.width;
+                        x += particleDensity
+                    ) {
+                        if (data[(y * tempCanvas.width + x) * 4 + 3] > 128) {
+                            countdownParticles.push({
+                                x: Math.random() * window.innerWidth, // Vị trí ban đầu ngẫu nhiên
+                                y: Math.random() * window.innerHeight,
+                                targetX:
+                                    x -
+                                    tempCanvas.width / 2 +
+                                    window.innerWidth / 2,
+                                targetY:
+                                    y -
+                                    tempCanvas.height / 2 +
+                                    window.innerHeight / 2,
+                                vx: 0,
+                                vy: 0,
+                                size: particleSize,
+                            });
+                        }
+                    }
+                }
+            }
+
+            function updateCountdownParticles() {
+                if (!started) return;
+
+                countdownCtx.clearRect(
+                    0,
+                    0,
+                    window.innerWidth,
+                    window.innerHeight,
+                );
+                var done = true;
+
+                countdownParticles.forEach((p) => {
+                    if (countdownStage === "forming") {
+                        // Tăng tốc độ bay về đích để giảm thời gian "vỡ"
+                        p.vx = (p.targetX - p.x) * FORMING_SPEED;
+                        p.vy = (p.targetY - p.y) * FORMING_SPEED;
+
+                        // Cập nhật vị trí
+                        p.x += p.vx;
+                        p.y += p.vy;
+
+                        // Kiểm tra xem đã đến nơi chưa (sai số nhỏ hơn 1px)
+                        if (
+                            Math.abs(p.targetX - p.x) > 1 ||
+                            Math.abs(p.targetY - p.y) > 1
+                        ) {
+                            done = false;
+                        } else {
+                            // Nếu đã rất gần, gán cứng vị trí để chữ sắc nét
+                            p.x = p.targetX;
+                            p.y = p.targetY;
+                        }
+                    } else if (countdownStage === "stable") {
+                        // Khi đã ổn định, khóa cứng vị trí tuyệt đối, không rung lắc
+                        p.x = p.targetX;
+                        p.y = p.targetY;
+                    }
+                    // Giai đoạn dispersing (tan rã) nếu muốn thêm hiệu ứng nổ thì code ở đây
+                    // Hiện tại code cũ chỉ chuyển text luôn nên ko cần xử lý
+
+                    countdownCtx.beginPath();
+                    countdownCtx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                    //thay màu mảng chữ
+                    countdownCtx.fillStyle = "#FF0000";
+                    countdownCtx.fill();
+                });
+
+                if (countdownStage === "forming" && done) {
+                    countdownStage = "stable"; // Chuyển sang chế độ giữ nét
+                    stableTime = 0;
+                }
+
+                if (countdownStage === "stable") {
+                    // 🚫 NẾU LÀ CÂU CUỐI → GIỮ MÃI, KHÔNG TAN
+                    if (currentTextIndex === countdownTexts.length - 1) {
+                        // khóa vĩnh viễn ở trạng thái stable
+                        return requestAnimationFrame(updateCountdownParticles);
+                    }
+
+                    stableTime++;
+                    if (stableTime > STABLE_DURATION) {
+                        countdownStage = "dispersing";
+                    }
+                }
+
+                if (countdownStage === "dispersing") {
+                    currentTextIndex++;
+                    if (currentTextIndex < countdownTexts.length) {
+                        createTextParticles(countdownTexts[currentTextIndex]);
+                        countdownStage = "forming";
+                    } else {
+                        document.getElementById(
+                            "countdownCanvas",
+                        ).style.display = "none";
+                        document.getElementById("child").style.display =
+                            "block";
+                        if (!pinkboardStarted) initPinkboard();
+                        return;
+                    }
+                }
+                requestAnimationFrame(updateCountdownParticles);
+            }
+        </script>
+        <!-- ================= COUNTDOWN TEXT (GIỮ NGUYÊN) ================= -->
+        <!-- (Giữ nguyên toàn bộ code chữ bạn gửi – KHÔNG SỬA) -->
+        <!-- 👉 Vì quá dài nên mình KHÔNG lặp lại ở đây -->
+        <!-- 👉 Bạn giữ nguyên toàn bộ script countdownParticles cũ -->
+
+        <!-- ================= CLICK START ================= -->
+
+        <script>
+            function startLove(e) {
+                if (started) return;
+                started = true;
+
+                document.getElementById("tapHint").style.display = "none";
+
+                const audio = document.getElementById("bgMusic");
+                audio.volume = 0.8;
+                audio.currentTime = 0;
+
+                // 🔓 UNLOCK + PLAY TRONG CÙNG GESTURE
+                audio
+                    .play()
+                    .then(() => {
+                        // OK cho Android + iOS
+                    })
+                    .catch(() => {
+                        console.log("Audio bị chặn");
+                    });
+
+                // START TEXT
+                initCountdownCanvas();
+                createTextParticles(countdownTexts[0]);
+                countdownStage = "forming";
+                updateCountdownParticles();
+            }
+
+            document.addEventListener("touchstart", startLove, { once: true });
+            document.addEventListener("click", startLove, { once: true });
+        </script>
+    </body>
+</html>
